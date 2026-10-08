@@ -269,9 +269,10 @@
       });
       return [...L, ...R.reverse()];
     };
-    const tt = V.torso, scarf = V.scarf && Pk(5) > 0, knot = Bd.T(tt * 0.58);
+    // top = where the roll sits on the neck, kd = height of the knot
+    const tt = V.torso, scarf = V.scarf && Pk(5) > 0, top = tt - tt * (1 - V.sh) * 0.6, kd = tt * 0.5, knot = Bd.T(kd);
     // the part running behind the neck, so it goes under the neck line
-    if (scarf) fp(Wl(ribbon(curvePts(Bd.T(tt - 8, -22), Bd.T(tt + 4, 0), Bd.T(tt - 8, 22), 10), () => 5)), '#9C2E22', seed + 5, 0.8);
+    if (scarf) fp(Wl(ribbon(curvePts(Bd.T(top - 3, -22), Bd.T(top + 9, 0), Bd.T(top - 3, 22), 10), () => 5)), '#9C2E22', seed + 5, 0.8);
 
     // torso
     sk(Wl([Bd.hip, Bd.neck]), { p: Pk(1), w: lw, seed: seed + 1 });
@@ -280,6 +281,12 @@
       const sh = [Bd.T(ys, -w0), Bd.T(ys + 3, 0), Bd.T(ys, w0), Bd.T(-4, w0 + 4), Bd.T(-4, -w0 - 4)];
       fp(Wl(sh), C.kraft, seed + 50, 1.2); line(Wl([...sh, sh[0]]), 3, 51, outline);
       line(Wl([Bd.T(ys - 44), Bd.T(2)]), 2.4, 54, 'rgba(37,34,42,.45)');
+      // sleeves go under the Halstuch; the arm lines then start where the sleeves end
+      [[Bd.shL, P.l[0]], [Bd.shR, P.r[0]]].forEach(([sh, ua], i) => {
+        const m = pol(sh, ua, V.upper * 0.45), b = pol(sh, ua + 180, 3);
+        const pts = [pol(b, ua - 90, 10), pol(b, ua + 90, 10), pol(m, ua + 90, 8.5), pol(m, ua - 90, 8.5)];
+        fp(Wl(pts), C.kraft, seed + 55 + i, 0.8); line(Wl([...pts, pts[0]]), 3, 56 + i, outline);
+      });
     }
 
     if (scarf) {
@@ -292,14 +299,14 @@
       });
       // the V from both sides of the neck down to the knot
       for (const sx of [-1, 1]) {
-        const pts = curvePts(T(tt - 5, sx * 22), T(tt * 0.8, sx * 19), T(tt * 0.58 + 3, sx * 5.5), 10);
+        const pts = curvePts(T(top, sx * 22), T(lerp(top, kd, 0.45), sx * 19), T(kd + 3, sx * 5.5), 10);
         fp(Wl(ribbon(pts, u => lerp(7, 5.5, u))), C.red, seed + 8 + sx, 0.8);
-        line(Wl(curvePts(T(tt - 9, sx * 21), T(tt * 0.8, sx * 18), T(tt * 0.6 + 4, sx * 5), 8)), 2, 12 + sx, 'rgba(90,20,15,.45)', 1);
+        line(Wl(curvePts(T(top - 4, sx * 21), T(lerp(top, kd, 0.45), sx * 18), T(kd + 4, sx * 5), 8)), 2, 12 + sx, 'rgba(90,20,15,.45)', 1);
       }
       // Halstuchknoten: wooden ring, seen from the front as a short wide band
       const wo = ribbon([pol(knot, Bd.up + 90, -14), pol(knot, Bd.up + 90, 14)], () => 8);
       fp(Wl(wo), C.kraft, seed + 14, 0.6); line(Wl([...wo, wo[0]]), 3, 15);
-      for (const dx of [-7, 0, 7]) line(Wl([T(tt * 0.58 + 5, dx), T(tt * 0.58 - 5, dx - 1)]), 1.6, 16 + dx, 'rgba(37,34,42,.4)', 0.6);
+      for (const dx of [-7, 0, 7]) line(Wl([T(kd + 5, dx), T(kd - 5, dx - 1)]), 1.6, 16 + dx, 'rgba(37,34,42,.4)', 0.6);
     }
 
     // head
@@ -394,11 +401,7 @@
     });
 
     // arms + hands
-    const sleeve = (sh, ua) => {
-      const m = pol(sh, ua, V.upper * 0.45), b = pol(sh, ua + 180, 3);
-      const pts = [pol(b, ua - 90, 10), pol(b, ua + 90, 10), pol(m, ua + 90, 8.5), pol(m, ua - 90, 8.5)];
-      fp(Wl(pts), C.kraft, seed + 55, 0.8); line(Wl([...pts, pts[0]]), 3, 56, outline);
-    };
+    const armFrom = (sh, ua) => V.shirt ? pol(sh, ua, V.upper * 0.4) : sh;
     const hand = (h, kind, a, sd) => {
       const mitt = V.hands === 'mitt', R0 = mitt ? 10 : 8.5;
       const palm = rr => {
@@ -414,11 +417,9 @@
       else if (kind === 'faust') palm(R0 + 1.5);
       else palm(R0);
     };
-    sk(Wl(limb(Bd.shL, eL, hL)), { p: Pk(3), w: lw, seed: seed + 3 });
-    if (V.shirt && Pk(5) > 0) sleeve(Bd.shL, P.l[0]);
+    sk(Wl(limb(armFrom(Bd.shL, P.l[0]), eL, hL)), { p: Pk(3), w: lw, seed: seed + 3 });
     if (Pk(3) >= 1) hand(hL, P.lh, P.lhDir ?? P.l[1], 30);
-    sk(Wl(limb(Bd.shR, eR, hR)), { p: Pk(4), w: lw, seed: seed + 4 });
-    if (V.shirt && Pk(5) > 0) sleeve(Bd.shR, P.r[0]);
+    sk(Wl(limb(armFrom(Bd.shR, P.r[0]), eR, hR)), { p: Pk(4), w: lw, seed: seed + 4 });
     if (P.pen && Pk(5) > 0) {
       line(Wl([pol(hR, 125, -12), pol(hR, 125, 24)]), 4.5, 92);
       line(Wl([pol(hR, 125, -13), pol(hR, 125, -5)]), 6, 93, C.red);
