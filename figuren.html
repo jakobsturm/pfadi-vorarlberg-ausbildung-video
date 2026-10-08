@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Strichfigur Varianten</title>
+<style>
+  @font-face { font-family: 'Marker'; src: url(fonts/PermanentMarker-Regular.ttf); }
+  @font-face { font-family: 'RubikF'; src: url(fonts/Rubik-Regular.ttf); font-weight: 400; }
+  @font-face { font-family: 'RubikF'; src: url(fonts/Rubik-Medium.ttf); font-weight: 500; }
+  @font-face { font-family: 'RubikF'; src: url(fonts/Rubik-Bold.ttf); font-weight: 700; }
+  html, body { margin: 0; background: #111; color: #EFE7D6; font-family: RubikF, system-ui, sans-serif; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; }
+  nav button { font: 500 15px RubikF, system-ui, sans-serif; background: #2A272E; color: #EFE7D6; border: 1px solid #444; border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+  nav button.on { background: #C63A2C; border-color: #C63A2C; }
+  nav span { opacity: .6; font-size: 14px; margin-left: 6px; }
+  canvas { display: block; width: 100%; height: auto; max-width: calc((100vh - 60px) * 16 / 9); margin: 0 auto; cursor: pointer; }
+  body.clean nav { display: none; }
+  body.clean canvas { max-width: none; }
+</style>
+</head>
+<body>
+<nav>
+  <button data-v="A">A · Klassik plus</button>
+  <button data-v="B">B · Wuschel</button>
+  <button data-v="C">C · Kluft</button>
+  <button data-v="vergleich">Vergleich</button>
+  <button data-v="szene">Szene</button>
+  <span>Klick auf eine Geste zeigt sie groß</span>
+</nav>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script src="lib.js"></script>
+<script src="figur.js"></script>
+<script>
+'use strict';
+// Galerie für die Strichfigur-Varianten. ?v=A|B|C|vergleich|szene, ?g=<geste>, ?t=<sek> hält die Zeit an, ?nav=0
+const F = window.FIGUR;
+const NAMEN = {
+  stehen: 'Stehen', winken: 'Winken', zeigen: 'Zeigen', zeigenOben: 'Nach oben zeigen', reden: 'Reden', tada: 'Ta-da!',
+  denken: 'Denken', kopfkratzen: 'Kopfkratzen', schulterzucken: 'Schulterzucken', staunen: 'Staunen', idee: 'Idee!',
+  daumenHoch: 'Daumen hoch', jubeln: 'Jubeln', hueften: 'Hände in die Hüften', notieren: 'Notieren', handy: 'Am Handy',
+  gehen: 'Gehen', pfadigruss: 'Pfadigruß',
+};
+const BESCHR = {
+  A: 'Wie bisher mit Hut und Halstuch, dazu Hände, Schuhe, Augenbrauen, Mimik und Schatten.',
+  B: 'Näher am Referenzbild: großer Kopf, Haarbüschel statt Hut, lange Beine, weiche Gummi-Arme.',
+  C: 'Papier-Look: Pfadihemd mit Ärmeln, kurze Hose, Stiefel, ausgefüllter Kopf.',
+};
+const LISTE = Object.keys(NAMEN);
+const qs = new URLSearchParams(location.search);
+let mode = qs.get('v') || 'A', basis = 'ABC'.includes(mode) ? mode : 'A', solo = qs.get('g');
+const tFix = qs.has('t') ? +qs.get('t') : null;
+if (qs.get('nav') === '0') document.body.classList.add('clean');
+const btns = [...document.querySelectorAll('nav button')];
+const mark = () => btns.forEach(b => b.classList.toggle('on', b.dataset.v === mode));
+btns.forEach(b => b.onclick = () => { mode = b.dataset.v; if (['A', 'B', 'C'].includes(mode)) basis = mode; solo = null; mark(); });
+mark();
+cv.addEventListener('click', e => {
+  if (solo) { solo = null; return; }
+  if (!['A', 'B', 'C'].includes(mode)) return;
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+  if (y > 170) solo = LISTE[Math.floor(x / (W / 9)) + (y > 580 ? 9 : 0)];
+});
+
+function bg() {
+  g = ctx; ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = C.paper; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = TEXP; ctx.fillRect(0, 0, W, H); ctx.restore();
+  ctx.fillStyle = 'rgba(37,34,42,0.10)';
+  for (let x = 30; x < W; x += 60) for (let y = 30; y < H; y += 60) ctx.fillRect(x - 2, y - 2, 4, 4);
+}
+function txt(str, x, y, size, o = {}) {
+  const { color = C.ink, align = 'center', marker = false, wt = 500 } = o;
+  g.font = marker ? `${size}px Marker, "Marker Felt", "Comic Sans MS", cursive` : `${wt} ${size}px RubikF, "Helvetica Neue", Arial, sans-serif`;
+  g.fillStyle = color; g.textAlign = align; g.fillText(str, x, y); g.textAlign = 'left';
+}
+
+function grid(key) {
+  const V = F.VARIANTEN[key], cw = W / 9;
+  txt(`Variante ${key}: ${V.name}`, 70, 92, 60, { marker: true, align: 'left' });
+  txt(BESCHR[key], 72, 140, 28, { align: 'left', color: C.ink2 });
+  LISTE.forEach((n, i) => {
+    const cx = cw * (i % 9 + 0.5), fy = i < 9 ? 520 : 985, lt = (NOW + i * 0.12) % 4.4;
+    F.drawFigur(cx, fy, 0.62, F.poseAt([[0, 'stehen'], [0.4, n], [4, 'stehen']], twos(lt), V, 3 + i), V, { seed: 3 + i });
+    txt(NAMEN[n], cx, fy + 52, 25);
+  });
+}
+function soloView(key, n) {
+  const V = F.VARIANTEN[key];
+  txt(NAMEN[n], 70, 96, 72, { marker: true, align: 'left' });
+  txt(`Variante ${key}: ${V.name} · Klick = zurück zur Übersicht`, 72, 144, 28, { align: 'left', color: C.ink2 });
+  F.drawFigur(960, 960, 1.55, F.poseAt([[0, 'stehen'], [0.6, n], [5.4, 'stehen']], twos(NOW % 6.2), V, 5), V, { seed: 5 });
+}
+function vergleich() {
+  const per = 4 * B, tl = LISTE.map((n, i) => [i * per, n]), tt = NOW % (per * LISTE.length);
+  txt(NAMEN[LISTE[Math.floor(tt / per)]], 960, 120, 80, { marker: true });
+  ['A', 'B', 'C'].forEach((k, j) => {
+    const V = F.VARIANTEN[k], x = 380 + j * 580;
+    F.drawFigur(x, 900, 1.12, F.poseAt(tl, twos(tt), V, 3 + j), V, { seed: 3 + j });
+    txt(`${k}: ${V.name}`, x, 990, 32, { color: C.ink2 });
+  });
+}
+function szene() {
+  const V1 = F.VARIANTEN[basis], V2 = { ...V1, hat: false, hair: 'zopf', brille: true };
+  const tt = NOW % (17 * B);
+  txt('Szene: Abschlussgespräch', 70, 92, 60, { marker: true, align: 'left' });
+  txt(`Teilnehmer*in (Variante ${basis}) und Ausbildungsbeauftragte*r mit Zopf und Brille, gespiegelt`, 72, 140, 28, { align: 'left', color: C.ink2 });
+  const g1 = [[0, 'reden'], [4 * B, 'denken'], [7 * B, 'idee'], [10 * B, 'daumenHoch'], [13 * B, 'jubeln']];
+  const g2 = [[0, 'notieren'], [5 * B, 'reden'], [9 * B, 'tada'], [13 * B, 'jubeln']];
+  F.drawFigur(640, 920, 1.1, F.poseAt(g1, twos(tt), V1, 3), V1, { seed: 3 });
+  F.drawFigur(1280, 920, 1.1, F.poseAt(g2, twos(tt), V2, 81), V2, { seed: 81, dir: -1 });
+}
+
+function frame() {
+  NOW = tFix ?? performance.now() / 1000;
+  bg();
+  if (solo && ['A', 'B', 'C'].includes(mode)) soloView(mode, solo);
+  else if (mode === 'vergleich') vergleich();
+  else if (mode === 'szene') szene();
+  else grid(mode);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.62);
+  vg.addColorStop(0, 'rgba(90,60,25,0)'); vg.addColorStop(1, 'rgba(90,60,25,0.15)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  if (tFix === null) requestAnimationFrame(frame);
+}
+Promise.allSettled([document.fonts.load('60px Marker'), document.fonts.load('500 28px RubikF')]).then(frame);
+</script>
+</body>
+</html>
