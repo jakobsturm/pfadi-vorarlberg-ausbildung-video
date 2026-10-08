@@ -65,7 +65,7 @@ ffmpeg -i jl-ausbildung-entwurf2.mp4 -c:v libx264 -preset medium -crf 25 -pix_fm
 
 Jeder Frame ist eine reine Funktion der Zeit: `window.seek(t)` zeichnet Frame `t`. Deshalb gibt es keine CSS-Transitions, Timer oder Zufallszahlen ohne Seed.
 
-Gerenderte Videos, Audio und alles in `out/` sind nicht im Repo, weil sie zu groß sind. `./build.sh` erzeugt sie neu.
+Zum Anschauen liegt die kleine Version des aktuellen Entwurfs im Repo: [`jl-ausbildung-entwurf2_klein.mp4`](jl-ausbildung-entwurf2_klein.mp4). Der Master mit CRF 16, Audio und alles in `out/` sind nicht im Repo, weil sie zu groß sind. `./build.sh` erzeugt sie neu.
 
 ## Inhalt und Quellen
 

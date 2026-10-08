@@ -4,8 +4,10 @@ node_modules/
 # Zwischenergebnisse (Frames, Contact Sheets, Mixe; ca. 3 GB)
 out/
 
-# Gerenderte Videos und Audio (zu groß für GitHub, Limit 100 MB pro Datei)
+# Gerenderte Videos und Audio (zu groß für GitHub, Limit 100 MB pro Datei).
+# Ausnahme: die kleinen Versionen zum Teilen (CRF 25, ca. 45 MB)
 *.mp4
+!*_klein.mp4
 *.wav
 
 # macOS
