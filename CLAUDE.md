@@ -72,6 +72,7 @@ Opus 5.5 defaults to medium effort and always thinks before answering. Every vir
 - Papier `#EFE7D6`, Karten `#FCF9F2`, Kraftpapier `#D9C29B`, Tinte `#25222A` / `#6A6370`, einzige Akzentfarbe Rot `#C63A2C`. Das rote Halstuch der Figur passt zu den RaRo.
 - Display-Schrift: Permanent Marker (`fonts/`), UI-Schrift: Rubik 400/500/700 (`fonts/`, als `RubikF` geladen).
 - Linien "boilen" mit 8 fps (seed wechselt mit `floor(t*8)`), Papierteile bewegen sich stop-motion "on twos" (15 fps), Kamera und Linienzeichnen laufen flüssig mit 30 fps.
+- Ausnahme Strichfigur 2 (`figur.js`): boilt nur mit 4 fps (`BOIL`) und der Kopfkreis mit kleinerem Ausschlag, weil der Kopf sonst zu unruhig wirkt (Feedback des Users).
 - Elemente erscheinen durch Zeichnen, Aufploppen, Fallen mit Überschwinger, Stempel-Slam oder Reinschieben, nie durch Einblenden.
 - Kamera fährt seitlich von Panel zu Panel (2 Beats, zentriert auf den Panel-Start), dabei zeichnet sich der gestrichelte Pfad am unteren Rand weiter. Slams geben einen kleinen Kamera-Punch.
 

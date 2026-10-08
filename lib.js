@@ -75,15 +75,16 @@ function strokePts(pts, p) {
 function sketch(pts, o = {}) {
   const { p = 1, w = 6, color = C.ink, amp = 2.6, seed = 1, double = true, boil = true, dash = null } = o;
   if (p <= 0) return;
-  const k = boil ? boilK(NOW) : 0, d = densify(pts);
+  // boil: true = 8 fps, a number sets its own rate, false = still
+  const k = boil ? Math.floor(NOW * (boil === true ? 8 : boil) + 1e-6) : 0, d = densify(pts);
   g.save(); g.strokeStyle = color; g.lineCap = 'round'; g.lineJoin = 'round';
   if (dash) g.setLineDash(dash);
   g.lineWidth = w; strokePts(wobble(d, amp, seed * 31 + k), p);
   if (double) { g.lineWidth = w * 0.42; g.globalAlpha = 0.5; strokePts(wobble(d, amp * 1.7, seed * 31 + k + 500), p); }
   g.restore();
 }
-function fillPoly(pts, color, seed = 1, amp = 2) {
-  const w = wobble(densify([...pts, pts[0]], 18), amp, seed * 13 + boilK(NOW));
+function fillPoly(pts, color, seed = 1, amp = 2, boil = 8) {
+  const w = wobble(densify([...pts, pts[0]], 18), amp, seed * 13 + Math.floor(NOW * boil + 1e-6));
   g.beginPath(); w.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath();
   g.fillStyle = color; g.fill();
 }

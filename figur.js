@@ -4,7 +4,8 @@
 // Gerechnet wird in lokalen Einheiten (s = 1, Ursprung am Boden zwischen den Füßen, "l"/"r" = Bildschirmseite);
 // erst beim Zeichnen wird skaliert und mit dir = -1 gespiegelt.
 (() => {
-  const RAD = Math.PI / 180, S = Math.sin, FOOT = 6, TRANS = 0.3;
+  // BOIL: wie oft pro Sekunde die Striche der Figur neu gezittert werden (der Rest des Films kocht mit 8)
+  const RAD = Math.PI / 180, S = Math.sin, FOOT = 6, TRANS = 0.3, BOIL = 4;
   const add = (p, q) => [p[0] + q[0], p[1] + q[1]];
   const pol = (p, a, l) => [p[0] + Math.cos(a * RAD) * l, p[1] + Math.sin(a * RAD) * l];
   const rotP = (q, a) => { const c = Math.cos(a * RAD), s = Math.sin(a * RAD); return [q[0] * c - q[1] * s, q[0] * s + q[1] * c]; };
@@ -177,7 +178,7 @@
     const P = { ...BASE, ...(GESTEN[name] || GESTEN.stehen)(Math.max(0, lt), V) };
     const k = P.idle;
     if (k) {
-      P.tilt += k * 3.5 * vnoise(gt * 0.8, seed + 11);
+      P.tilt += k * 2 * vnoise(gt * 0.6, seed + 11);
       P.lean += k * 1.4 * S(gt * 2.1 + seed);
       const sw = k * 2.5 * S(gt * 2.1 + seed + 0.8);
       if (Array.isArray(P.l)) P.l = [P.l[0] + sw, P.l[1] + sw * 1.4];
@@ -217,7 +218,8 @@
   const QM = [[...curvePts([-12, -14], [-11, -31], [3, -30], 8), ...curvePts([3, -30], [17, -27], [8, -12], 8).slice(1), [1, -5], [0, 5]]];
 
   function drawFigur(x, y, s, P, V, o = {}) {
-    const { dir = 1, p = 1, seed = 3 } = o;
+    const { dir = 1, p = 1, seed = 3, boil = BOIL } = o;
+    const sk = (pts, opt) => sketch(pts, { boil, ...opt }), fp = (pts, color, sd, amp) => fillPoly(pts, color, sd, amp, boil);
     const wk = o.wk || Math.min(1, 0.45 + 0.55 * s), lw = 6 * wk, t = NOW;
     const Pk = k => clamp(p * 6 - k);
     const Wp = q => [x + dir * q[0] * s, y + q[1] * s], Wl = pts => pts.map(Wp);
@@ -226,7 +228,7 @@
     const eL = pol(Bd.shL, P.l[0], V.upper), hL = pol(eL, P.l[1], V.fore);
     const eR = pol(Bd.shR, P.r[0], V.upper), hR = pol(eR, P.r[1], V.fore);
     const limb = (a, b, c) => V.hose ? curvePts(a, [2 * b[0] - (a[0] + c[0]) / 2, 2 * b[1] - (a[1] + c[1]) / 2], c, 14) : [a, b, c];
-    const line = (pts, w, sd, color = C.ink, amp = 2) => sketch(pts, { w: w * wk, seed: seed + sd, double: false, color, amp });
+    const line = (pts, w, sd, color = C.ink, amp = 2) => sk(pts, { w: w * wk, seed: seed + sd, double: false, color, amp });
     const outline = 'rgba(37,34,42,0.85)';
 
     // ground shadow, shrinks while jumping
@@ -239,14 +241,14 @@
     }
 
     // legs + feet
-    sketch(Wl(limb(Bd.hip, Bd.kl, Bd.al)), { p: Pk(2), w: lw, seed: seed + 2 });
-    sketch(Wl(limb(Bd.hip, Bd.kr, Bd.ar)), { p: Pk(2), w: lw, seed: seed + 12 });
+    sk(Wl(limb(Bd.hip, Bd.kl, Bd.al)), { p: Pk(2), w: lw, seed: seed + 2 });
+    sk(Wl(limb(Bd.hip, Bd.kr, Bd.ar)), { p: Pk(2), w: lw, seed: seed + 12 });
     if (Pk(2) >= 1) {
       const fa = P.feet || [180 - 40 * air, 40 * air];
       [[Bd.al, fa[0]], [Bd.ar, fa[1]]].forEach(([an, a], i) => {
         const big = V.feet === 'stiefel', pts = oval(pol(an, a, 7), big ? 15 : 13, big ? 8.5 : 7, a);
-        if (V.feet === 'oval') { fillPoly(Wl(pts), C.card, seed + 40 + i, 0.8); line(Wl([...pts, pts[0]]), 3.5, 42 + i); }
-        else fillPoly(Wl(pts), C.ink, seed + 40 + i, 0.8);
+        if (V.feet === 'oval') { fp(Wl(pts), C.card, seed + 40 + i, 0.8); line(Wl([...pts, pts[0]]), 3.5, 42 + i); }
+        else fp(Wl(pts), C.ink, seed + 40 + i, 0.8);
       });
     }
 
@@ -254,7 +256,7 @@
     if (V.shirt && Pk(5) > 0) {
       const mL = pol(Bd.hip, P.legs[0], V.thigh * 0.42), mR = pol(Bd.hip, P.legs[2], V.thigh * 0.42), w0 = V.shW + 10;
       const sh = [Bd.T(6, -w0), Bd.T(6, w0), pol(mR, P.legs[2] - 90, 11), pol(mR, P.legs[2] + 90, 9), pol(Bd.hip, 90, 5), pol(mL, P.legs[0] - 90, 9), pol(mL, P.legs[0] + 90, 11)];
-      fillPoly(Wl(sh), '#4A4450', seed + 52, 1); line(Wl([...sh, sh[0]]), 3, 53, outline);
+      fp(Wl(sh), '#4A4450', seed + 52, 1); line(Wl([...sh, sh[0]]), 3, 53, outline);
     }
 
     // Halstuch, wie es getragen wird: gerollt um den Hals, vorne als V zum Knoten, darunter die zwei Zipfel.
@@ -269,14 +271,14 @@
     };
     const tt = V.torso, scarf = V.scarf && Pk(5) > 0, knot = Bd.T(tt * 0.58);
     // the part running behind the neck, so it goes under the neck line
-    if (scarf) fillPoly(Wl(ribbon(curvePts(Bd.T(tt - 8, -22), Bd.T(tt + 4, 0), Bd.T(tt - 8, 22), 10), () => 5)), '#9C2E22', seed + 5, 0.8);
+    if (scarf) fp(Wl(ribbon(curvePts(Bd.T(tt - 8, -22), Bd.T(tt + 4, 0), Bd.T(tt - 8, 22), 10), () => 5)), '#9C2E22', seed + 5, 0.8);
 
     // torso
-    sketch(Wl([Bd.hip, Bd.neck]), { p: Pk(1), w: lw, seed: seed + 1 });
+    sk(Wl([Bd.hip, Bd.neck]), { p: Pk(1), w: lw, seed: seed + 1 });
     if (V.shirt && Pk(5) > 0) {
       const ys = V.torso * V.sh + 9, w0 = V.shW + 8;
       const sh = [Bd.T(ys, -w0), Bd.T(ys + 3, 0), Bd.T(ys, w0), Bd.T(-4, w0 + 4), Bd.T(-4, -w0 - 4)];
-      fillPoly(Wl(sh), C.kraft, seed + 50, 1.2); line(Wl([...sh, sh[0]]), 3, 51, outline);
+      fp(Wl(sh), C.kraft, seed + 50, 1.2); line(Wl([...sh, sh[0]]), 3, 51, outline);
       line(Wl([Bd.T(ys - 44), Bd.T(2)]), 2.4, 54, 'rgba(37,34,42,.45)');
     }
 
@@ -286,23 +288,23 @@
       [[6, 46, '#B0352A'], [-5, 40, C.red]].forEach(([da, len, col], i) => {
         const a = Bd.up + 180 + sw + da, k0 = pol(knot, Bd.up + 180, 3);
         const pts = Array.from({ length: 7 }, (_, j) => pol(k0, a + j * sw * 0.15, len * j / 6));
-        fillPoly(Wl(ribbon(pts, u => u < 0.6 ? lerp(5.5, 9.5, u / 0.6) : lerp(9.5, 0.8, (u - 0.6) / 0.4))), col, seed + 6 + i, 0.8);
+        fp(Wl(ribbon(pts, u => u < 0.6 ? lerp(5.5, 9.5, u / 0.6) : lerp(9.5, 0.8, (u - 0.6) / 0.4))), col, seed + 6 + i, 0.8);
       });
       // the V from both sides of the neck down to the knot
       for (const sx of [-1, 1]) {
         const pts = curvePts(T(tt - 5, sx * 22), T(tt * 0.8, sx * 19), T(tt * 0.58 + 3, sx * 5.5), 10);
-        fillPoly(Wl(ribbon(pts, u => lerp(7, 5.5, u))), C.red, seed + 8 + sx, 0.8);
+        fp(Wl(ribbon(pts, u => lerp(7, 5.5, u))), C.red, seed + 8 + sx, 0.8);
         line(Wl(curvePts(T(tt - 9, sx * 21), T(tt * 0.8, sx * 18), T(tt * 0.6 + 4, sx * 5), 8)), 2, 12 + sx, 'rgba(90,20,15,.45)', 1);
       }
       // Halstuchknoten: wooden ring, seen from the front as a short wide band
       const wo = ribbon([pol(knot, Bd.up + 90, -14), pol(knot, Bd.up + 90, 14)], () => 8);
-      fillPoly(Wl(wo), C.kraft, seed + 14, 0.6); line(Wl([...wo, wo[0]]), 3, 15);
+      fp(Wl(wo), C.kraft, seed + 14, 0.6); line(Wl([...wo, wo[0]]), 3, 15);
       for (const dx of [-7, 0, 7]) line(Wl([T(tt * 0.58 + 5, dx), T(tt * 0.58 - 5, dx - 1)]), 1.6, 16 + dx, 'rgba(37,34,42,.4)', 0.6);
     }
 
     // head
-    if (V.headFill && Pk(0) >= 1) fillPoly(Wl(ellPts(Bd.hc[0], Bd.hc[1], r, r * 1.06, seed, 1, 0)), V.headFill, seed + 60, 1);
-    sketch(Wl(ellPts(Bd.hc[0], Bd.hc[1], r, r * 1.06, seed, 1.08)), { p: Pk(0), w: lw, seed });
+    if (V.headFill && Pk(0) >= 1) fp(Wl(ellPts(Bd.hc[0], Bd.hc[1], r, r * 1.06, seed, 1, 0)), V.headFill, seed + 60, 0.6);
+    sk(Wl(ellPts(Bd.hc[0], Bd.hc[1], r, r * 1.06, seed, 1.08)), { p: Pk(0), w: lw, seed, amp: 1.5 });
 
     if (Pk(5) > 0 && V.hair === 'tolle') {
       const wig = 3 * S(t * 4 + seed) + 10 * air;
@@ -313,10 +315,10 @@
       const cap = [];
       for (let i = 0; i <= 16; i++) { const a = (200 + i / 16 * 140) * RAD; cap.push([Math.cos(a) * r * 1.03, Math.sin(a) * r * 1.07]); }
       cap.push(...curvePts(cap[cap.length - 1], [r * 0.1, -r * 1.05], cap[0], 10));
-      fillPoly(cap.map(HW), C.ink, seed + 25, 1);
+      fp(cap.map(HW), C.ink, seed + 25, 1);
       const sw = 5 * S(t * 3 + seed) + 14 * air;
       line(curvePts([r * 0.78, -r * 0.62], [r * 1.6, -r * 0.75 + sw * 0.3], [r * 1.35 + sw, r * 0.45], 10).map(HW), 12, 26);
-      fillPoly(oval([r * 0.86, -r * 0.66], 5, 6, 30).map(HW), C.red, seed + 27, 0.5);
+      fp(oval([r * 0.86, -r * 0.66], 5, 6, 30).map(HW), C.red, seed + 27, 0.5);
     }
 
     // face
@@ -348,11 +350,11 @@
       if (m === 'reden') m = ['klein', 'grins', 'o', 'laecheln', 'klein'][Math.floor(rnd(seed, Math.floor(t * 7.5)) * 5)];
       if (m === 'laecheln') fl(curvePts([-17 * k, 13 * k], [0, 30 * k], [17 * k, 13 * k], 10), 4, 80);
       else if (m === 'grins') {
-        fillPoly(curvePts([-19 * k, 11 * k], [0, 46 * k], [19 * k, 11 * k], 14).map(HW), C.ink, seed + 81, 0.6);
-        fillPoly(ellPts(0, 24 * k, 7 * k, 4 * k, seed, 1, 0).map(HW), C.red, seed + 82, 0.3);
+        fp(curvePts([-19 * k, 11 * k], [0, 46 * k], [19 * k, 11 * k], 14).map(HW), C.ink, seed + 81, 0.6);
+        fp(ellPts(0, 24 * k, 7 * k, 4 * k, seed, 1, 0).map(HW), C.red, seed + 82, 0.3);
       }
-      else if (m === 'o') fillPoly(ellPts(0, 20 * k, 6.5 * k, 8.5 * k, seed, 1, 0).map(HW), C.ink, seed + 83, 0.4);
-      else if (m === 'klein') fillPoly(ellPts(0, 18 * k, 9 * k, 5.5 * k, seed, 1, 0).map(HW), C.ink, seed + 84, 0.4);
+      else if (m === 'o') fp(ellPts(0, 20 * k, 6.5 * k, 8.5 * k, seed, 1, 0).map(HW), C.ink, seed + 83, 0.4);
+      else if (m === 'klein') fp(ellPts(0, 18 * k, 9 * k, 5.5 * k, seed, 1, 0).map(HW), C.ink, seed + 84, 0.4);
       else if (m === 'flach') fl([[-10 * k, 19 * k], [10 * k, 17 * k]], 4, 85);
       else if (m === 'wellig') fl([[-13 * k, 19 * k], [-6.5 * k, 15 * k], [0, 19 * k], [6.5 * k, 15 * k], [13 * k, 19 * k]], 3.6, 86);
       else if (m === 'schief') fl(curvePts([-9 * k, 18 * k], [5 * k, 25 * k], [17 * k, 11 * k], 8), 4, 87);
@@ -366,9 +368,9 @@
     if (V.hat && Pk(5) > 0) {
       const K = pts => pts.map(([a, b]) => HW([a * kH, b * kH]));
       const crown = K([[-42, -37], [-27, -94], [0, -80], [27, -94], [42, -38]]);
-      fillPoly(crown, C.kraft, seed + 7, 1.5);
-      sketch(crown, { p: Pk(5), w: 5 * wk, seed: seed + 8 });
-      sketch(K([[-74, -33], [74, -39]]), { p: Pk(5), w: 7 * wk, seed: seed + 9 });
+      fp(crown, C.kraft, seed + 7, 1.5);
+      sk(crown, { p: Pk(5), w: 5 * wk, seed: seed + 8 });
+      sk(K([[-74, -33], [74, -39]]), { p: Pk(5), w: 7 * wk, seed: seed + 9 });
     }
 
     // props held in front of the body (hands are drawn on top)
@@ -380,29 +382,29 @@
     prop(P.board, () => {
       paper(-28, -38, 56, 76, C.kraft, 21, { shadow: false });
       paper(-23, -30, 46, 63, C.card, 23, { shadow: false, outline: false });
-      fillPoly([[-13, -43], [13, -43], [13, -33], [-13, -33]], C.ink2, 25, 0.4);
-      for (let i = 0; i < 3; i++) sketch([[-17, -16 + i * 14], [i === 2 ? 5 : 17, -16 + i * 14]], { w: 2.4, seed: 26 + i, double: false, color: C.ink2, amp: 1 });
+      fp([[-13, -43], [13, -43], [13, -33], [-13, -33]], C.ink2, 25, 0.4);
+      for (let i = 0; i < 3; i++) sk([[-17, -16 + i * 14], [i === 2 ? 5 : 17, -16 + i * 14]], { w: 2.4, seed: 26 + i, double: false, color: C.ink2, amp: 1 });
     });
     prop(P.phone, () => {
-      fillPoly([[-15, -25], [15, -25], [15, 25], [-15, 25]], C.ink, 31, 0.6);
-      fillPoly([[-11, -19], [11, -19], [11, 17], [-11, 17]], '#F4EEDF', 32, 0.4);
-      fillPoly([[-7, -13], [7, -13], [7, -6], [-7, -6]], C.red, 33, 0.3);
-      sketch([[-7, 1], [7, 1]], { w: 2, seed: 34, double: false, color: C.ink2, amp: 0.6 });
-      sketch([[-7, 8], [3, 8]], { w: 2, seed: 35, double: false, color: C.ink2, amp: 0.6 });
+      fp([[-15, -25], [15, -25], [15, 25], [-15, 25]], C.ink, 31, 0.6);
+      fp([[-11, -19], [11, -19], [11, 17], [-11, 17]], '#F4EEDF', 32, 0.4);
+      fp([[-7, -13], [7, -13], [7, -6], [-7, -6]], C.red, 33, 0.3);
+      sk([[-7, 1], [7, 1]], { w: 2, seed: 34, double: false, color: C.ink2, amp: 0.6 });
+      sk([[-7, 8], [3, 8]], { w: 2, seed: 35, double: false, color: C.ink2, amp: 0.6 });
     });
 
     // arms + hands
     const sleeve = (sh, ua) => {
       const m = pol(sh, ua, V.upper * 0.45), b = pol(sh, ua + 180, 3);
       const pts = [pol(b, ua - 90, 10), pol(b, ua + 90, 10), pol(m, ua + 90, 8.5), pol(m, ua - 90, 8.5)];
-      fillPoly(Wl(pts), C.kraft, seed + 55, 0.8); line(Wl([...pts, pts[0]]), 3, 56, outline);
+      fp(Wl(pts), C.kraft, seed + 55, 0.8); line(Wl([...pts, pts[0]]), 3, 56, outline);
     };
     const hand = (h, kind, a, sd) => {
       const mitt = V.hands === 'mitt', R0 = mitt ? 10 : 8.5;
       const palm = rr => {
         const pts = oval(h, rr, rr * 0.95, a, 14);
-        if (mitt) { fillPoly(Wl(pts), C.card, seed + sd, 0.5); line(Wl([...pts, pts[0]]), 3.5, sd + 1); }
-        else fillPoly(Wl(pts), C.ink, seed + sd, 0.5);
+        if (mitt) { fp(Wl(pts), C.card, seed + sd, 0.5); line(Wl([...pts, pts[0]]), 3.5, sd + 1); }
+        else fp(Wl(pts), C.ink, seed + sd, 0.5);
       };
       const fing = (ang, l0, l1, w = 4, off = 0) => { const b = pol(h, ang + 90, off); line(Wl([pol(b, ang, l0), pol(b, ang, l1)]), w, sd + 2 + Math.round(ang + off), C.ink, 1.2); };
       if (kind === 'offen') { for (const d of [-40, -14, 12, 38]) fing(a + d, 5, 18); palm(R0 * 0.9); }
@@ -412,10 +414,10 @@
       else if (kind === 'faust') palm(R0 + 1.5);
       else palm(R0);
     };
-    sketch(Wl(limb(Bd.shL, eL, hL)), { p: Pk(3), w: lw, seed: seed + 3 });
+    sk(Wl(limb(Bd.shL, eL, hL)), { p: Pk(3), w: lw, seed: seed + 3 });
     if (V.shirt && Pk(5) > 0) sleeve(Bd.shL, P.l[0]);
     if (Pk(3) >= 1) hand(hL, P.lh, P.lhDir ?? P.l[1], 30);
-    sketch(Wl(limb(Bd.shR, eR, hR)), { p: Pk(4), w: lw, seed: seed + 4 });
+    sk(Wl(limb(Bd.shR, eR, hR)), { p: Pk(4), w: lw, seed: seed + 4 });
     if (V.shirt && Pk(5) > 0) sleeve(Bd.shR, P.r[0]);
     if (P.pen && Pk(5) > 0) {
       line(Wl([pol(hR, 125, -12), pol(hR, 125, 24)]), 4.5, 92);
@@ -442,7 +444,7 @@
       if (f === 'birne' && age > 0.25) {
         const sc = eback(clamp((age - 0.25) / 0.3)), c = Wp(add(hc, [0, V.hat ? -145 * kH : -r - 58]));
         const Tq = q => [c[0] + q[0] * s * sc, c[1] + q[1] * s * sc];
-        fillPoly(ellPts(0, 0, 19, 20, 5, 1, 0).map(Tq), '#F2D68A', seed + 140, 1);
+        fp(ellPts(0, 0, 19, 20, 5, 1, 0).map(Tq), '#F2D68A', seed + 140, 1);
         line(ellPts(0, 0, 19, 20, 6, 1.06).map(Tq), 4, 141);
         line([[-8, 24], [8, 24]].map(Tq), 4, 142); line([[-6, 30], [6, 30]].map(Tq), 4, 143);
         line([[-6, 6], [-3, -2], [0, 6], [3, -2], [6, 6]].map(Tq), 2.5, 144, C.red, 0.8);
